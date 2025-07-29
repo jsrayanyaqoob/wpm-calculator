@@ -257,10 +257,18 @@
                 }
             });
             
-            // Prevent paste in the typing input
+          // Prevent paste in the typing input
             typingInput.addEventListener('paste', (e) => {
                 e.preventDefault();
             });
+
+            // Stop test on Enter key press
+            typingInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && testRunning) {
+                    e.preventDefault();
+                    endTest();
+                }
+            });            
         });
     </script>
 </body>
