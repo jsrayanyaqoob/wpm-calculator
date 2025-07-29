@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Speed Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .typing-text {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            min-height: 120px;
+        }
+        
+        .current-char {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        
+        .correct-char {
+            color: #10b981;
+        }
+        
+        .incorrect-char {
+            color: #ef4444;
+            text-decoration: underline;
+        }
+        
+        .typing-input {
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+        
+        .pulse-animation {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
+    <div class="max-w-3xl w-full">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600 mb-2">Typing Speed Test</h1>
+            <p class="text-gray-600">Test your typing speed and accuracy in 60 seconds</p>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="text-lg font-semibold text-gray-700">
+                    <span id="timer" class="text-2xl font-bold text-blue-600">60</span> seconds remaining
+                </div>
+                <button id="startBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full transition-all duration-300 flex items-center pulse-animation">
+                    <i class="fas fa-play mr-2"></i> Start Test
+                </button>
+            </div>
+
+            <div class="typing-text mb-6" id="textDisplay">
+                The quick brown fox jumps over the lazy dog. This sentence contains all the letters in the English alphabet. Typing is an essential skill in today's digital world, and practicing regularly can significantly improve your speed and accuracy.
+            </div>
+
+            <div class="relative">
+                <textarea 
+                    id="typingInput" 
+                    class="w-full h-32 p-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none resize-none typing-input" 
+                    placeholder="Click 'Start Test' and begin typing here..." 
+                    disabled
+                ></textarea>
+                <div id="progressBar" class="h-1 bg-gray-200 mt-2">
+                    <div id="progress" class="h-full bg-blue-500 w-0"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="bg-white rounded-xl shadow-lg p-6 hidden">
+            <h2 class="text-2xl font-bold text-center mb-6 text-blue-600">Your Results</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-blue-50 p-4 rounded-lg text-center">
+                    <div class="text-4xl font-bold text-blue-600" id="wpm">0</div>
+                    <div class="text-gray-600">Words Per Minute</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg text-center">
+                    <div class="text-4xl font-bold text-green-600" id="accuracy">0%</div>
+                    <div class="text-gray-600">Accuracy</div>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg text-center">
+                    <div class="text-4xl font-bold text-purple-600" id="charCount">0</div>
+                    <div class="text-gray-600">Characters Typed</div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button id="restartBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full transition-all duration-300">
+                    <i class="fas fa-redo mr-2"></i> Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-8 text-center text-gray-500 text-sm">
+        <p>Typing Speed Test MVP | Practice daily to improve your skills</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const textDisplay = document.getElementById('textDisplay');
+            const typingInput = document.getElementById('typingInput');
+            const startBtn = document.getElementById('startBtn');
+            const timerDisplay = document.getElementById('timer');
+            const resultsSection = document.getElementById('results');
+            const wpmDisplay = document.getElementById('wpm');
+            const accuracyDisplay = document.getElementById('accuracy');
+            const charCountDisplay = document.getElementById('charCount');
+            const restartBtn = document.getElementById('restartBtn');
+            const progressBar = document.getElementById('progress');
+            
+            const originalText = textDisplay.textContent.trim();
+            let timer;
+            let timeLeft = 60;
+            let testRunning = false;
+            let startTime;
+            let endTime;
+            
+            // Initialize the text with highlighting for the first character
+            function initializeText() {
+                let html = '';
+                for (let i = 0; i < originalText.length; i++) {
+                    if (i === 0) {
+                        html += `<span class="current-char">${originalText[i]}</span>`;
+                    } else {
+                        html += originalText[i];
+                    }
+                }
+                textDisplay.innerHTML = html;
+            }
+            
+            initializeText();
+            
+            // Start the typing test
+            function startTest() {
+                if (testRunning) return;
+                
+                testRunning = true;
+                startBtn.disabled = true;
+                typingInput.disabled = false;
+                typingInput.value = '';
+                typingInput.focus();
+                startTime = new Date();
+                
+                // Start timer
+                timer = setInterval(() => {
+                    timeLeft--;
+                    timerDisplay.textContent = timeLeft;
+                    progressBar.style.width = `${((60 - timeLeft) / 60) * 100}%`;
+                    
+                    if (timeLeft <= 0) {
+                        endTest();
+                    }
+                }, 1000);
+                
+                // Change button appearance
+                startBtn.classList.remove('bg-blue-600', 'pulse-animation');
+                startBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                startBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Test Running';
+            }
+            
+            // End the typing test
+            function endTest() {
+                clearInterval(timer);
+                testRunning = false;
+                typingInput.disabled = true;
+                endTime = new Date();
+                
+                // Calculate results
+                const typedText = typingInput.value;
+                const timeTaken = (60 - timeLeft) / 60; // in minutes
+                const words = typedText.trim().split(/\s+/).filter(word => word.length > 0);
+                const wpm = Math.round(words.length / timeTaken);
+                
+                // Calculate accuracy
+                let correctChars = 0;
+                for (let i = 0; i < Math.min(typedText.length, originalText.length); i++) {
+                    if (typedText[i] === originalText[i]) {
+                        correctChars++;
+                    }
+                }
+                const accuracy = Math.round((correctChars / typedText.length) * 100) || 0;
+                
+                // Display results
+                wpmDisplay.textContent = wpm;
+                accuracyDisplay.textContent = `${accuracy}%`;
+                charCountDisplay.textContent = typedText.length;
+                
+                // Show results section
+                resultsSection.classList.remove('hidden');
+                
+                // Reset button
+                startBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                startBtn.classList.add('bg-blue-600', 'pulse-animation');
+                startBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Start Test';
+                startBtn.disabled = false;
+            }
+            
+            // Restart the test
+            function restartTest() {
+                timeLeft = 60;
+                timerDisplay.textContent = timeLeft;
+                progressBar.style.width = '0%';
+                resultsSection.classList.add('hidden');
+                typingInput.value = '';
+                initializeText();
+            }
+            
+            // Event listeners
+            startBtn.addEventListener('click', startTest);
+            restartBtn.addEventListener('click', restartTest);
+            
+            // Handle typing input
+            typingInput.addEventListener('input', (e) => {
+                if (!testRunning) return;
+                
+                const typedText = e.target.value;
+                const currentPos = typedText.length;
+                
+                // Update the highlighted character
+                let html = '';
+                for (let i = 0; i < originalText.length; i++) {
+                    if (i < typedText.length) {
+                        // Already typed characters
+                        const charClass = typedText[i] === originalText[i] ? 'correct-char' : 'incorrect-char';
+                        html += `<span class="${charClass}">${originalText[i]}</span>`;
+                    } else if (i === typedText.length) {
+                        // Current character to type
+                        html += `<span class="current-char">${originalText[i]}</span>`;
+                    } else {
+                        // Future characters
+                        html += originalText[i];
+                    }
+                }
+                textDisplay.innerHTML = html;
+                
+                // Scroll to keep current character in view
+                const currentCharElement = textDisplay.querySelector('.current-char');
+                if (currentCharElement) {
+                    currentCharElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+            
+            // Prevent paste in the typing input
+            typingInput.addEventListener('paste', (e) => {
+                e.preventDefault();
+            });
+        });
+    </script>
+</body>
+</html>
